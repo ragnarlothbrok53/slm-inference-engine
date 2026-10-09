@@ -9,3 +9,15 @@ wheels/
 # Virtual environments
 .venv
 *.gguf
+
+# Local config and models
+.env
+models/
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Benchmark server logs (results JSON/CSV are committed)
+benchmarks/results/*/server.log
