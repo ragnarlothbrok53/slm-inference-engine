@@ -20,7 +20,7 @@ class Metrics:
         r = self.registry
         self.requests = Counter(
             "slm_requests_total",
-            "Completion requests by outcome (ok|timeout|cancelled|engine_error).",
+            "Completion requests by outcome (ok|timeout|cancelled|engine_error|shutdown).",
             ["outcome"],
             registry=r,
         )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -41,6 +42,9 @@ _ERROR_MAP: dict[type[SchedulerError], tuple[int, str]] = {
 }
 
 
+_SAFE_REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")
+
+
 def _error_body(message: str, type_: str) -> dict[str, dict[str, str]]:
     return {"error": {"message": message, "type": type_}}
 
@@ -60,7 +64,9 @@ class RequestContextMiddleware:
             await self.app(scope, receive, send)
             return
         headers = dict(scope["headers"])
-        request_id = headers.get(b"x-request-id", b"").decode() or uuid.uuid4().hex[:16]
+        # Client-supplied IDs are written to logs, so only accept a short, safe charset.
+        supplied = headers.get(b"x-request-id", b"").decode("latin-1")
+        request_id = supplied if _SAFE_REQUEST_ID.fullmatch(supplied) else uuid.uuid4().hex[:16]
         start = time.perf_counter()
         status = 500
 

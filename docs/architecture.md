@@ -113,6 +113,7 @@ each case, including a real socket disconnect against a live uvicorn server.
 | Exception inside the engine | that request | `500 engine_error` (or an in-band SSE error event after headers); the replica keeps serving |
 | Deadline exceeded | that request | `504 timeout`; backend work cancelled |
 | Client disconnect | that request | generation cancelled, `slm_requests_total{outcome="cancelled"}` |
+| Shutdown with work queued | queued requests | `503 service_unavailable` (retryable), `outcome="shutdown"` |
 | Native crash in llama.cpp (segfault/OOM) | whole process | not recoverable in-process; relies on the supervisor (Docker/k8s) restart. See design-decisions. |
 
 ## State

@@ -16,8 +16,9 @@ blocking completion route and placeholder modules.
 - `GET /healthz` (liveness) and `GET /readyz` (readiness; the model loads in the background).
 - Prometheus `GET /metrics`: TTFT, queue wait, request duration, decode tokens/s, token counters,
   queue depth, in-flight requests, rejections, outcomes.
-- Structured logging (text or JSON) with `X-Request-ID` propagation and one access-log line per
-  request; per-generation log line with TTFT, queue wait and token counts.
+- Structured logging (text or JSON) with `X-Request-ID` propagation (client IDs restricted to
+  64 safe characters, since they're logged) and one access-log line per request; per-generation
+  log line with TTFT, queue wait and token counts.
 - `fake` engine with configurable latency, for tests and serving-overhead benchmarks.
 - `SLM_REPLICAS`: N independent model instances in one process.
 - Configuration through `SLM_*` environment variables / `.env` (pydantic-settings).

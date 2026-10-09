@@ -163,6 +163,15 @@ async def test_request_id_is_propagated_or_generated() -> None:
     assert len(generated.headers["x-request-id"]) == 16
 
 
+@pytest.mark.parametrize("bad", ["a" * 65, "id with spaces", "id;level=ERROR", ""])
+async def test_unsafe_request_ids_are_replaced(bad: str) -> None:
+    # Client-supplied IDs end up in logs; anything outside a short safe charset is replaced.
+    async with serve([InstrumentedEngine()]) as (client, _):
+        r = await client.get("/healthz", headers={"x-request-id": bad.encode("utf-8")})
+    assert r.headers["x-request-id"] != bad
+    assert len(r.headers["x-request-id"]) == 16
+
+
 async def test_metrics_endpoint_exposes_inference_metrics() -> None:
     async with serve([InstrumentedEngine()]) as (client, _):
         await client.post("/v1/completions", json={"prompt": "a b", "max_tokens": 4})

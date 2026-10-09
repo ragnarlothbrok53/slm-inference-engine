@@ -42,7 +42,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "benchmarks" / "results"
 MODEL = os.environ.get("SLM_BENCH_MODEL", "models/qwen2.5-0.5b-instruct-q4_k_m.gguf")
 
-# ~1.1k-token prompt for measuring prefill cost (TTFT) separately from decode.
+# ~1.2k-token prompt for measuring prefill cost (TTFT) separately from decode.
 _LONG_CONTEXT = " ".join(
     f"Record {i}: the sensor at station {i % 17} reported a reading of {(i * 37) % 101} units."
     for i in range(60)

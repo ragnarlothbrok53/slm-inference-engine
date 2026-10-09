@@ -128,12 +128,17 @@ class Generation:
                         self._finish("ok")
                         return
                     else:
+                        if isinstance(ev.error, SchedulerError):  # e.g. shutdown: keep its type
+                            raise ev.error
                         raise EngineError(str(ev.error)) from ev.error
         except TimeoutError:
             self._finish("timeout")
             raise DeadlineExceededError("request deadline exceeded") from None
         except EngineError:
             self._finish("engine_error")
+            raise
+        except NotReadyError:
+            self._finish("shutdown")
             raise
         finally:
             self.close()

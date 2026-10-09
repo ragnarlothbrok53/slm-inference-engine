@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "scenario": "llama-long-prompt",
+    "run": 3,
+    "description": "Prefill cost: ~1.2k-token prompt (unique per request, so the KV cache can't be reused), 16 output tokens, 1 replica x 8 threads.",
+    "expected": "",
+    "timestamp": "2026-10-09T08:35:47+00:00",
+    "git_commit": "b848fa5",
+    "hardware": {
+      "os": "Windows 10",
+      "python": "3.11.9",
+      "cpu": "Intel(R) Core(TM) Ultra 7 165U",
+      "cpu_cores_physical": 12,
+      "cpu_cores_logical": 14,
+      "ram_gb": 31.5,
+      "nvidia_gpus": [],
+      "accelerator": "cpu"
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "server_env": {
+      "SLM_ENGINE": "llama_cpp",
+      "SLM_MODEL_PATH": "models/qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "SLM_REPLICAS": "1",
+      "SLM_N_THREADS": "8",
+      "SLM_N_CTX": "2048"
+    },
+    "model_file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+    "model_size_mb": 468.6,
+    "model_load_s": 3.06,
+    "workload": {
+      "requests_per_level": 8,
+      "max_tokens": 16,
+      "temperature": 0.0,
+      "prompt_chars": 4119,
+      "unique_prompt_prefix": true,
+      "warmup_requests": 2,
+      "client": "closed-loop, streaming"
+    }
+  },
+  "levels": [
+    {
+      "concurrency": 1,
+      "requests": 8,
+      "succeeded": 8,
+      "errors": {},
+      "error_rate": 0.0,
+      "wall_s": 92.243,
+      "throughput_rps": 0.087,
+      "output_tokens_per_s": 1.39,
+      "mean_completion_tokens": 16.0,
+      "mean_prompt_tokens": 1245.6,
+      "latency_ms_p50": 11237.1,
+      "latency_ms_p95": 13404.1,
+      "latency_ms_p99": 13678.0,
+      "ttft_ms_p50": 10852.7,
+      "ttft_ms_p95": 12678.3,
+      "ttft_ms_p99": 12859.2,
+      "itl_ms_p50": 25.1,
+      "itl_ms_p95": 53.7,
+      "decode_tps_per_request_mean": 36.24,
+      "server_peak_rss_mb": 650.4,
+      "server_cpu_cores_mean": 7.42
+    }
+  ]
+}

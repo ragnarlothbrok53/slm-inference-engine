@@ -166,7 +166,8 @@ async def test_stop_fails_queued_requests_and_closes_engines() -> None:
     queued_gen = sched.submit("b", p(), timeout_s=5)
     await asyncio.sleep(0.05)
     await sched.stop()
-    with pytest.raises(EngineError, match="shutting down"):
+    # Queued work fails with a retryable "not ready" error (HTTP 503), not an engine error.
+    with pytest.raises(NotReadyError, match="shutting down"):
         await collect(queued_gen)
     running_gen.close()
     assert engine.closed

@@ -50,9 +50,11 @@ batching engine.
 
 `SLM_REPLICAS=N` loads N independent model copies, each on its own thread. It is the simplest way
 to serve more than one request at a time, but each replica holds a full copy of the weights, and
-replicas compete for the same cores and memory bandwidth. Whether it helps depends on the
-hardware; see the measured result in the README's Performance section. Measure before turning it
-on.
+replicas compete for the same cores and memory bandwidth. Measured on a laptop CPU (README,
+Performance §4): 2 replicas × 4 threads vs. 1 × 8 cut p50 TTFT at concurrency 2 from 5.3 s to
+0.9 s, used 1.8× the memory, and slowed each stream (18.9 vs. 30.6 tok/s). Any aggregate
+throughput gain was within run-to-run noise. Replicas buy responsiveness under light concurrency,
+not capacity. Measure on the target hardware before turning them on.
 
 ## 5. Fail fast at admission (bounded queue, `503`) instead of queueing without limit
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 import sys
+from types import FrameType
 
 from loguru import logger
 
@@ -16,7 +18,12 @@ class _InterceptHandler(logging.Handler):
             level: str | int = logger.level(record.levelname).name
         except ValueError:
             level = record.levelno
-        logger.opt(exception=record.exc_info).log(level, record.getMessage())
+        # Attribute the line to the original caller, not to this handler.
+        frame: FrameType | None = inspect.currentframe()
+        depth = 0
+        while frame is not None and (depth == 0 or frame.f_code.co_filename == logging.__file__):
+            frame, depth = frame.f_back, depth + 1
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
 def configure_logging(level: str = "INFO", json: bool = False) -> None:
