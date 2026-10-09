@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import threading
 import time
 from collections.abc import AsyncIterator, Iterator
@@ -74,19 +75,13 @@ async def wait_ready(client: httpx.AsyncClient, within_s: float = 5.0) -> None:
     while time.monotonic() < deadline:
         if (await client.get("/readyz")).status_code == 200:
             return
-        await _sleep(0.01)
+        await asyncio.sleep(0.01)
     raise AssertionError("server never became ready")
-
-
-async def _sleep(s: float) -> None:
-    import anyio
-
-    await anyio.sleep(s)
 
 
 @asynccontextmanager
 async def serve(
-    engines: list[Engine], ready: bool = True, **settings_overrides: object
+    engines: list[Engine], wait_until_ready: bool = True, **settings_overrides: object
 ) -> AsyncIterator[tuple[httpx.AsyncClient, FastAPI]]:
     """Run the app in-process (with lifespan) and yield an HTTP client bound to it."""
     settings = Settings(engine="fake", **settings_overrides)  # type: ignore[arg-type]
@@ -94,6 +89,6 @@ async def serve(
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            if ready:
+            if wait_until_ready:
                 await wait_ready(client)
             yield client, app

@@ -62,6 +62,7 @@ class Scenario:
     max_tokens: int
     prompt: str = loadgen.DEFAULT_PROMPT
     needs_model: bool = False
+    unique_prompts: bool = True  # False = identical prompt every time (prefix-cache hits)
     expected: str = ""  # what a correct system should show; checked by reading the numbers
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -119,7 +120,8 @@ SCENARIOS: dict[str, Scenario] = {
         needs_model=True,
     ),
     "llama-long-prompt": Scenario(
-        description="Prefill cost: ~1.1k-token prompt, 16 output tokens, 1 replica x 8 threads.",
+        description="Prefill cost: ~1.2k-token prompt (unique per request, so the KV cache "
+        "can't be reused), 16 output tokens, 1 replica x 8 threads.",
         server_env={
             "SLM_ENGINE": "llama_cpp",
             "SLM_MODEL_PATH": MODEL,
@@ -132,6 +134,23 @@ SCENARIOS: dict[str, Scenario] = {
         max_tokens=16,
         prompt=LONG_PROMPT,
         needs_model=True,
+    ),
+    "llama-long-prompt-cached": Scenario(
+        description="Same as llama-long-prompt, but the identical prompt is sent every time, so "
+        "llama.cpp reuses the KV cache for the shared prefix and skips most of the prefill.",
+        server_env={
+            "SLM_ENGINE": "llama_cpp",
+            "SLM_MODEL_PATH": MODEL,
+            "SLM_REPLICAS": "1",
+            "SLM_N_THREADS": "8",
+            "SLM_N_CTX": "2048",
+        },
+        concurrency=[1],
+        requests=8,
+        max_tokens=16,
+        prompt=LONG_PROMPT,
+        needs_model=True,
+        unique_prompts=False,
     ),
 }
 
@@ -239,11 +258,11 @@ def run_once(name: str, sc: Scenario, run: int) -> None:
             levels: list[dict[str, Any]] = []
             raw: list[loadgen.RequestResult] = []
             with ProcessSampler(server.pid) as sampler:
-                asyncio.run(loadgen.run_level(url, payload, 1, 2, 600))  # warmup
+                asyncio.run(loadgen.run_level(url, payload, 1, 2, 600, sc.unique_prompts))
                 for c in sc.concurrency:
                     sampler.label = c
                     results, wall = asyncio.run(
-                        loadgen.run_level(url, payload, c, sc.requests, 600)
+                        loadgen.run_level(url, payload, c, sc.requests, 600, sc.unique_prompts)
                     )
                     sampler.label = None
                     level = loadgen.summarize(results, wall) | sampler.stats(c)
@@ -279,6 +298,7 @@ def run_once(name: str, sc: Scenario, run: int) -> None:
             "max_tokens": sc.max_tokens,
             "temperature": 0.0,
             "prompt_chars": len(sc.prompt),
+            "unique_prompt_prefix": sc.unique_prompts,
             "warmup_requests": 2,
             "client": "closed-loop, streaming",
         },
@@ -404,6 +424,11 @@ def write_report() -> None:
         env = ", ".join(f"`{k}={v}`" for k, v in m["server_env"].items() if k != "SLM_MODEL_PATH")
         wl = m["workload"]
         load = ", ".join(str(x) for x in m["model_load_s"])
+        prompt_mode = (
+            "unique prefix per request"
+            if wl.get("unique_prompt_prefix", True)
+            else "identical prompt every request"
+        )
         sections.append(
             f"- Runs: {m['runs']} ({m['run_timestamps'][0]} - {m['run_timestamps'][-1]}), "
             f"commit {', '.join(f'`{c}`' for c in m['git_commits'])}\n"
@@ -417,8 +442,8 @@ def write_report() -> None:
                 else ""
             )
             + f"- Workload per run: {wl['requests_per_level']} requests per concurrency level, "
-            f"max_tokens={wl['max_tokens']}, temperature=0, prompt {wl['prompt_chars']} chars, "
-            f"{wl['client']}\n"
+            f"max_tokens={wl['max_tokens']}, temperature=0, prompt {wl['prompt_chars']} chars "
+            f"({prompt_mode}), {wl['client']}\n"
         )
         rows = ["| " + " | ".join(REPORT_COLUMNS) + " |", "|" + "---|" * len(REPORT_COLUMNS)]
         for lv in data["levels"]:

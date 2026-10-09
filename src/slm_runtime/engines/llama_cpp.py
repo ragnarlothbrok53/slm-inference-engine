@@ -30,6 +30,9 @@ class LlamaCppEngine(Engine):
             model_path=self.model_path,
             n_ctx=self.n_ctx,
             n_threads=self.n_threads,
+            # Same count for prompt processing. llama-cpp-python otherwise uses every logical
+            # core for prefill; on a hybrid laptop CPU that measured slower and much noisier.
+            n_threads_batch=self.n_threads,
             n_gpu_layers=self.n_gpu_layers,
             verbose=False,
         )

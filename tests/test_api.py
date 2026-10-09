@@ -119,7 +119,7 @@ async def test_engine_error_mid_stream_is_reported_in_band() -> None:
 
 async def test_readiness_reflects_model_loading() -> None:
     engine = InstrumentedEngine(load_delay_s=0.3)
-    async with serve([engine], ready=False) as (client, _):
+    async with serve([engine], wait_until_ready=False) as (client, _):
         assert (await client.get("/healthz")).status_code == 200  # alive while loading
         loading = await client.get("/readyz")
         assert (loading.status_code, loading.json()["status"]) == (503, "loading")
@@ -130,7 +130,7 @@ async def test_readiness_reflects_model_loading() -> None:
 
 
 async def test_readiness_reports_load_failure() -> None:
-    async with serve([BrokenLoadEngine()], ready=False) as (client, _):
+    async with serve([BrokenLoadEngine()], wait_until_ready=False) as (client, _):
         await asyncio.sleep(0.05)
         r = await client.get("/readyz")
     assert r.status_code == 503
@@ -181,7 +181,7 @@ async def test_models_endpoint() -> None:
 
 
 async def test_unready_server_rejects_with_503_not_crash() -> None:
-    async with serve([BrokenLoadEngine()], ready=False) as (client, _):
+    async with serve([BrokenLoadEngine()], wait_until_ready=False) as (client, _):
         await asyncio.sleep(0.05)
         r = await client.post("/v1/completions", json={"prompt": "x"})
     assert r.status_code == 503

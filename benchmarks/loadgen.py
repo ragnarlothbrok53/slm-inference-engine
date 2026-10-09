@@ -21,6 +21,7 @@ import csv
 import json
 import math
 import time
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -105,8 +106,19 @@ async def one_request(
 
 
 async def run_level(
-    url: str, payload: dict[str, Any], concurrency: int, n_requests: int, timeout_s: float
+    url: str,
+    payload: dict[str, Any],
+    concurrency: int,
+    n_requests: int,
+    timeout_s: float,
+    unique_prompts: bool = True,
 ) -> tuple[list[RequestResult], float]:
+    """Run ``n_requests`` with ``concurrency`` closed-loop workers.
+
+    ``unique_prompts`` prepends a random tag to every prompt. llama.cpp reuses the KV cache for
+    the longest prefix shared with the previous prompt, so repeating one prompt verbatim turns
+    every request after the first into a cache hit and hides the prefill cost in TTFT.
+    """
     limits = httpx.Limits(max_connections=concurrency, max_keepalive_connections=concurrency)
     results: list[RequestResult] = []
     remaining = n_requests
@@ -117,7 +129,10 @@ async def run_level(
             nonlocal remaining
             while remaining > 0:
                 remaining -= 1
-                results.append(await one_request(client, payload, concurrency))
+                p = payload
+                if unique_prompts:
+                    p = payload | {"prompt": f"[{uuid.uuid4().hex[:12]}] {payload['prompt']}"}
+                results.append(await one_request(client, p, concurrency))
 
         t0 = time.perf_counter()
         await asyncio.gather(*(worker() for _ in range(concurrency)))
@@ -242,12 +257,13 @@ async def run(
     payload: dict[str, Any],
     warmup: int,
     timeout_s: float,
+    unique_prompts: bool = True,
 ) -> tuple[list[dict[str, Any]], list[RequestResult]]:
     if warmup:
-        await run_level(url, payload, 1, warmup, timeout_s)
+        await run_level(url, payload, 1, warmup, timeout_s, unique_prompts)
     levels, raw = [], []
     for c in concurrency:
-        results, wall = await run_level(url, payload, c, n_requests, timeout_s)
+        results, wall = await run_level(url, payload, c, n_requests, timeout_s, unique_prompts)
         levels.append(summarize(results, wall))
         raw.extend(results)
         print(
@@ -276,13 +292,26 @@ def main() -> None:
     ap.add_argument("--temperature", type=float, default=0.0)
     ap.add_argument("--prompt", default=DEFAULT_PROMPT)
     ap.add_argument("--warmup", type=int, default=2)
+    ap.add_argument(
+        "--repeat-prompt",
+        action="store_true",
+        help="Send the prompt verbatim every time (measures prefix-cache hits, not prefill).",
+    )
     ap.add_argument("--timeout", type=float, default=600.0)
     ap.add_argument("--out", type=Path, default=None, help="Directory for JSON/CSV results.")
     args = ap.parse_args()
 
     payload = build_payload(args.prompt, args.max_tokens, args.temperature)
     levels, raw = asyncio.run(
-        run(args.url, args.concurrency, args.requests, payload, args.warmup, args.timeout)
+        run(
+            args.url,
+            args.concurrency,
+            args.requests,
+            payload,
+            args.warmup,
+            args.timeout,
+            unique_prompts=not args.repeat_prompt,
+        )
     )
     print(markdown_table(levels))
     if args.out:

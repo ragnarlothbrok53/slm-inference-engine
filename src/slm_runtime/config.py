@@ -17,7 +17,9 @@ class Settings(BaseSettings):
     engine: EngineName = "llama_cpp"
     model_path: str = "models/qwen2.5-0.5b-instruct-q4_k_m.gguf"
     n_ctx: int = Field(4096, ge=128, description="Context window (llama.cpp).")
-    n_threads: int | None = Field(None, ge=1, description="CPU threads per replica; None = auto.")
+    n_threads: int | None = Field(
+        None, ge=1, description="CPU threads per replica (decode and prefill); None = auto."
+    )
     n_gpu_layers: int = Field(0, description="Layers to offload to GPU (llama.cpp); -1 = all.")
     replicas: int = Field(
         1, ge=1, le=16, description="Independent model instances, each served by its own worker."
