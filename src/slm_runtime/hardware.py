@@ -9,6 +9,7 @@ from __future__ import annotations
 import platform
 import shutil
 import subprocess
+import sys
 from typing import Any
 
 import psutil
@@ -23,7 +24,7 @@ def _cpu_model() -> str:
                 for line in f:
                     if line.startswith("model name"):
                         return line.split(":", 1)[1].strip()
-        elif platform.system() == "Windows":
+        elif sys.platform == "win32":  # (not platform.system(): mypy only narrows sys.platform)
             import winreg
 
             with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, _WIN_CPU_KEY) as key:
