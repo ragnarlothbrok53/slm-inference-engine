@@ -1,0 +1,5 @@
+concurrency,requests,succeeded,error_rate,wall_s,throughput_rps,output_tokens_per_s,mean_completion_tokens,mean_prompt_tokens,latency_ms_p50,latency_ms_p95,latency_ms_p99,ttft_ms_p50,ttft_ms_p95,ttft_ms_p99,itl_ms_p50,itl_ms_p95,decode_tps_per_request_mean,server_peak_rss_mb,server_cpu_cores_mean,errors
+1,400,400,0.0,9.625,41.558,2659.69,64.0,19.0,20.1,45.3,61.0,5.2,11.2,25.0,0.1,0.6,4063.84,70.1,0.89,{}
+4,400,400,0.0,8.943,44.729,2862.63,64.0,19.0,80.5,147.8,180.9,62.4,114.2,139.2,0.0,0.8,3850.16,70.4,1.27,{}
+16,400,400,0.0,10.024,39.904,2553.85,64.0,19.0,333.5,635.4,694.3,316.5,594.3,661.0,0.1,0.8,3602.34,71.9,1.23,{}
+64,400,400,0.0,7.32,54.646,3497.33,64.0,19.0,1082.8,1290.7,1331.2,1064.9,1277.5,1314.9,0.0,0.6,4633.78,77.5,1.22,{}

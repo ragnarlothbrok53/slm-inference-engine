@@ -1,39 +1,73 @@
 [project]
-name = "ml-service"
+name = "slm-runtime"
 version = "0.1.0"
-description = "Add your description here"
+description = "A small, observable inference server for local small language models (llama.cpp / MLX backends)."
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
-    "anyio>=4.12.1",
-    "fastapi>=0.135.1",
-    "llama-cpp-python>=0.3.16",
-    "loguru>=0.7.3",
-    "mlx-lm>=0.31.1",
-    "opentelemetry-api>=1.40.0",
-    "opentelemetry-sdk>=1.40.0",
-    "prometheus-client>=0.24.1",
-    "psutil>=7.2.2",
-    "pydantic>=2.12.5",
-    "torch>=2.10.0",
-    "transformers>=5.3.0",
-    "typer>=0.24.1",
-    "uvicorn>=0.41.0",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "prometheus-client>=0.20",
+    "loguru>=0.7",
+    "psutil>=5.9",
+    "typer>=0.12",
+    "httpx>=0.27",
 ]
 
-[tool.uv]
-package = true
-
-[tool.setuptools]
-package-dir = {"" = "src"}
+[project.optional-dependencies]
+# Backends are optional so the server, tests and benchmarks install anywhere.
+llama = ["llama-cpp-python>=0.3"]
+mlx = ["mlx-lm>=0.20; sys_platform == 'darwin' and platform_machine == 'arm64'"]
 
 [project.scripts]
-runtime = "runtime.cli:app"
+slm-runtime = "slm_runtime.cli:app"
 
 [dependency-groups]
 dev = [
-    "black>=26.3.1",
-    "mypy>=1.19.1",
-    "pytest>=9.0.2",
-    "ruff>=0.15.6",
+    "pytest>=8",
+    "anyio>=4",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "types-psutil",
 ]
+
+# Prebuilt CPU wheels for llama-cpp-python (Linux/macOS/Windows), so installing does not
+# require a C++ toolchain. For CUDA/Metal builds, see the llama-cpp-python docs.
+[[tool.uv.index]]
+name = "llama-cpp-cpu"
+url = "https://abetlen.github.io/llama-cpp-python/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+llama-cpp-python = { index = "llama-cpp-cpu" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/slm_runtime"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["llama_cpp.*", "mlx_lm.*", "mlx.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

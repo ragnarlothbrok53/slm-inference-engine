@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-test:
+    name: Lint, type-check, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen  # no backend extras: unit tests use the fake engine
+      - run: uv run ruff format --check src tests benchmarks examples
+      - run: uv run ruff check src tests benchmarks examples
+      - run: uv run mypy
+      - run: uv run pytest
+
+  real-model:
+    name: Integration test (llama.cpp + Qwen2.5-0.5B)
+    runs-on: ubuntu-latest
+    env:
+      MODEL_URL: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf
+      SLM_TEST_MODEL_PATH: models/qwen2.5-0.5b-instruct-q4_k_m.gguf
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/cache@v4
+        with:
+          path: models
+          key: model-qwen2.5-0.5b-instruct-q4_k_m
+      - name: Download model (cached)
+        run: |
+          mkdir -p models
+          [ -f "$SLM_TEST_MODEL_PATH" ] || curl -fsSL -o "$SLM_TEST_MODEL_PATH" "$MODEL_URL"
+      - run: uv sync --frozen --extra llama
+      - run: uv run pytest tests/test_integration.py -v
+
+  docker:
+    name: Docker build + smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: slm-runtime:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test (fake engine, no model needed)
+        run: |
+          docker run -d --name slm -p 8000:8000 -e SLM_ENGINE=fake slm-runtime:ci
+          for i in $(seq 1 30); do curl -fs localhost:8000/readyz && break; sleep 1; done
+          curl -fs localhost:8000/v1/completions -H 'content-type: application/json' \
+            -d '{"prompt":"hello","max_tokens":4}' | tee /dev/stderr | grep -q '"finish_reason":"length"'
+          curl -fs localhost:8000/metrics | grep -q 'slm_requests_total{outcome="ok"} 1.0'
+      - if: failure()
+        run: docker logs slm
